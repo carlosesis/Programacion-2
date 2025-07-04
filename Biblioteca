@@ -1,0 +1,245 @@
+#include <iostream>
+#include <string>
+#include <cctype>
+#include <algorithm>
+using namespace std;
+
+class Publicacion {
+protected:
+    string titulo;
+    int anio;
+public:
+    Publicacion(const string& titulo, int anio) : titulo(titulo), anio(anio) {}
+    virtual void mostrar() const = 0;
+    virtual string getTipo() const = 0;
+    string getTitulo() const { return titulo; }
+    int getAnio() const { return anio; }
+    virtual ~Publicacion() {}
+};
+
+class Libro : public Publicacion {
+    int paginas;
+public:
+    Libro(const string& titulo, int anio, int paginas)
+        : Publicacion(titulo, anio), paginas(paginas) {}
+    void mostrar() const override {
+        cout << "[Libro] Título: " << titulo << ", Año: " << anio
+             << ", Páginas: " << paginas << endl;
+    }
+    string getTipo() const override { return "Libro"; }
+};
+
+class Revista : public Publicacion {
+    int edicion;
+public:
+    Revista(const string& titulo, int anio, int edicion)
+        : Publicacion(titulo, anio), edicion(edicion) {}
+    void mostrar() const override {
+        cout << "[Revista] Título: " << titulo << ", Año: " << anio
+             << ", Edición: " << edicion << endl;
+    }
+    string getTipo() const override { return "Revista"; }
+};
+
+class Periodico : public Publicacion {
+public:
+    Periodico(const string& titulo, int anio)
+        : Publicacion(titulo, anio) {}
+    void mostrar() const override {
+        cout << "[Periódico] Título: " << titulo << ", Año: " << anio << endl;
+    }
+    string getTipo() const override { return "Periodico"; }
+};
+class Catalogo {
+    Publicacion** publicaciones;
+    int capacidad;
+    int cantidad;
+
+    void redimensionar() {
+        int nuevaCapacidad = capacidad * 2;
+        Publicacion** nuevo = new Publicacion*[nuevaCapacidad];
+        for (int i = 0; i < cantidad; ++i)
+            nuevo[i] = publicaciones[i];
+        delete[] publicaciones;
+        publicaciones = nuevo;
+        capacidad = nuevaCapacidad;
+    }
+
+public:
+    Catalogo(int cap = 10) : capacidad(cap), cantidad(0) {
+        publicaciones = new Publicacion*[capacidad];
+    }
+
+    void agregar(Publicacion* p) {
+        if (cantidad == capacidad)
+            redimensionar();
+        publicaciones[cantidad++] = p;
+    }
+
+    void mostrar() const {
+        for (int i = 0; i < cantidad; ++i) {
+            cout << i + 1 << ". ";
+            publicaciones[i]->mostrar();
+        }
+    }
+
+    void buscarPorTitulo(const string& tituloBusqueda) const {
+        bool encontrado = false;
+        for (int i = 0; i < cantidad; ++i) {
+            string titulo = publicaciones[i]->getTitulo();
+            string copiaTitulo = titulo;
+            string copiaBusqueda = tituloBusqueda;
+
+            transform(copiaTitulo.begin(), copiaTitulo.end(), copiaTitulo.begin(), ::tolower);
+            transform(copiaBusqueda.begin(), copiaBusqueda.end(), copiaBusqueda.begin(), ::tolower);
+
+            if (copiaTitulo.find(copiaBusqueda) != string::npos) {
+                publicaciones[i]->mostrar();
+                encontrado = true;
+            }
+        }
+        if (!encontrado)
+            cout << "No se encontraron coincidencias.\n";
+    }
+
+    void eliminar(int indice) {
+        if (indice < 0 || indice >= cantidad) {
+            cout << "Índice inválido.\n";
+            return;
+        }
+        delete publicaciones[indice];
+        for (int i = indice; i < cantidad - 1; ++i)
+            publicaciones[i] = publicaciones[i + 1];
+        cantidad--;
+        cout << "Publicación eliminada.\n";
+    }
+
+    void estadisticas() const {
+        int libros = 0, revistas = 0, periodicos = 0;
+        int anioMin = 3000, anioMax = 0;
+
+        for (int i = 0; i < cantidad; ++i) {
+            string tipo = publicaciones[i]->getTipo();
+            if (tipo == "Libro") libros++;
+            else if (tipo == "Revista") revistas++;
+            else if (tipo == "Periodico") periodicos++;
+
+            int anio = publicaciones[i]->getAnio();
+            anioMin = min(anioMin, anio);
+            anioMax = max(anioMax, anio);
+        }
+
+        cout << "Total publicaciones: " << cantidad << "\n";
+        cout << "Libros: " << libros << ", Revistas: " << revistas << ", Periódicos: " << periodicos << "\n";
+        if (cantidad > 0) {
+            cout << "Publicación más antigua: " << anioMin << "\n";
+            cout << "Publicación más reciente: " << anioMax << "\n";
+        }
+    }
+
+    ~Catalogo() {
+        for (int i = 0; i < cantidad; ++i)
+            delete publicaciones[i];
+        delete[] publicaciones;
+    }
+};
+bool validarAnio(int anio) {
+    return anio >= 1500 && anio <= 2025;
+}
+
+bool validarPositivo(int valor) {
+    return valor > 0;
+}
+
+string leerTexto(const string& mensaje) {
+    string entrada;
+    do {
+        cout << mensaje;
+        getline(cin, entrada);
+    } while (entrada.empty());
+    return entrada;
+}
+
+int leerEntero(const string& mensaje, int min = 1) {
+    int valor;
+    do {
+        cout << mensaje;
+        cin >> valor;
+        cin.ignore();
+    } while (valor < min);
+    return valor;
+}
+
+int main() {
+    Catalogo catalogo;
+    int opcion;
+
+    do {
+        cout << "\n--- MENU ---\n";
+        cout << "1. Agregar Publicación\n";
+        cout << "2. Mostrar Publicaciones\n";
+        cout << "3. Buscar por Título\n";
+        cout << "4. Eliminar Publicación\n";
+        cout << "5. Estadísticas\n";
+        cout << "6. Salir\n";
+        cout << "Seleccione una opción: ";
+        cin >> opcion;
+        cin.ignore();
+
+        switch (opcion) {
+        case 1: {
+            int tipo;
+            cout << "Seleccione tipo:\n1. Libro\n2. Revista\n3. Periódico\n";
+            cin >> tipo;
+            cin.ignore();
+
+            string titulo = leerTexto("Título: ");
+            int anio = leerEntero("Año: ", 1500);
+            if (!validarAnio(anio)) {
+                cout << "Año fuera de rango.\n";
+                break;
+            }
+
+            if (tipo == 1) {
+                int paginas = leerEntero("Número de páginas: ");
+                catalogo.agregar(new Libro(titulo, anio, paginas));
+            }
+            else if (tipo == 2) {
+                int edicion = leerEntero("Número de edición: ");
+                catalogo.agregar(new Revista(titulo, anio, edicion));
+            }
+            else if (tipo == 3) {
+                catalogo.agregar(new Periodico(titulo, anio));
+            }
+            else {
+                cout << "Opción inválida.\n";
+            }
+            break;
+        }
+        case 2:
+            catalogo.mostrar();
+            break;
+        case 3: {
+            string buscar = leerTexto("Ingrese título a buscar: ");
+            catalogo.buscarPorTitulo(buscar);
+            break;
+        }
+        case 4: {
+            catalogo.mostrar();
+            int idx = leerEntero("Ingrese número de publicación a eliminar: ") - 1;
+            catalogo.eliminar(idx);
+            break;
+        }
+        case 5:
+            catalogo.estadisticas();
+            break;
+        case 6:
+            cout << "Saliendo...\n";
+            break;
+        default:
+            cout << "Opción no válida.\n";
+        }
+    } while (opcion != 6);
+
+    return 0;
+}
