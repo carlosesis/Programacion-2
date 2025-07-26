@@ -1,0 +1,313 @@
+#ifndef MATRIZ_HPP
+#define MATRIZ_HPP
+
+#include <iostream>
+#include <stdexcept>
+
+namespace MatrizLib {
+
+class Matriz {
+private:
+    double** datos;
+    int filas, columnas;
+
+    void reservarMemoria();
+    void liberarMemoria();
+    void copiarDatos(double** origen);
+
+public:
+    Matriz();
+    Matriz(int f, int c);
+    Matriz(const Matriz& otra);
+    ~Matriz();
+
+    void llenarMatriz();
+    void mostrarMatriz() const;
+    Matriz transpuesta() const;
+    double determinante() const;
+    Matriz suma(const Matriz& otra) const;
+    Matriz multiplicacion(const Matriz& otra) const;
+    bool esIgual(const Matriz& otra) const;
+
+    // Métodos adicionales - cambiados a anadir en lugar de añadir
+    void anadirFila();
+    void anadirColumna();
+
+    int getFilas() const { return filas; }
+    int getColumnas() const { return columnas; }
+    double getValor(int i, int j) const;
+    void setValor(int i, int j, double valor);
+};
+
+// Función factory
+Matriz crearMatriz(int filas, int columnas);
+
+} 
+
+#endif
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#include "Matriz.hpp"
+#include <iomanip>
+#include <limits>
+
+using namespace std;
+using namespace MatrizLib;
+
+// Constructor por defecto
+Matriz::Matriz() : filas(0), columnas(0), datos(nullptr) {}
+
+// Constructor con dimensiones
+Matriz::Matriz(int f, int c) : filas(f), columnas(c) {
+    if (f <= 0 || c <= 0) throw invalid_argument("Dimensiones deben ser positivas");
+    reservarMemoria();
+    for (int i = 0; i < filas; ++i)
+        for (int j = 0; j < columnas; ++j)
+            datos[i][j] = 0;
+}
+
+// Constructor de copia
+Matriz::Matriz(const Matriz& otra) : filas(otra.filas), columnas(otra.columnas) {
+    reservarMemoria();
+    copiarDatos(otra.datos);
+}
+
+// Destructor
+Matriz::~Matriz() {
+    liberarMemoria();
+}
+
+void Matriz::reservarMemoria() {
+    datos = new double*[filas];
+    for (int i = 0; i < filas; ++i)
+        datos[i] = new double[columnas];
+}
+
+void Matriz::liberarMemoria() {
+    if (datos != nullptr) {
+        for (int i = 0; i < filas; ++i)
+            delete[] datos[i];
+        delete[] datos;
+        datos = nullptr;
+    }
+}
+
+void Matriz::copiarDatos(double** origen) {
+    for (int i = 0; i < filas; ++i)
+        for (int j = 0; j < columnas; ++j)
+            datos[i][j] = origen[i][j];
+}
+
+void Matriz::llenarMatriz() {
+    cout << "Ingrese los elementos de la matriz (" << filas << "x" << columnas << "):\n";
+    for (int i = 0; i < filas; ++i)
+        for (int j = 0; j < columnas; ++j) {
+            cout << "Elemento [" << i << "][" << j << "]: ";
+            while (!(cin >> datos[i][j])) {
+                cout << "Entrada invalida. Ingrese un numero: ";
+                cin.clear();
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            }
+        }
+}
+
+void Matriz::mostrarMatriz() const {
+    cout << fixed << setprecision(2);
+    for (int i = 0; i < filas; ++i) {
+        for (int j = 0; j < columnas; ++j)
+            cout << setw(8) << datos[i][j];
+        cout << '\n';
+    }
+}
+
+Matriz Matriz::transpuesta() const {
+    Matriz resultado(columnas, filas);
+    for (int i = 0; i < filas; ++i)
+        for (int j = 0; j < columnas; ++j)
+            resultado.datos[j][i] = datos[i][j];
+    return resultado;
+}
+
+double Matriz::determinante() const {
+    if (filas != columnas)
+        throw logic_error("El determinante solo se puede calcular para matrices cuadradas.");
+
+    if (filas == 1)
+        return datos[0][0];
+
+    if (filas == 2)
+        return datos[0][0] * datos[1][1] - datos[0][1] * datos[1][0];
+
+    double det = 0;
+    for (int k = 0; k < columnas; ++k) {
+        Matriz sub(filas - 1, columnas - 1);
+        for (int i = 1; i < filas; ++i) {
+            int colIndex = 0;
+            for (int j = 0; j < columnas; ++j) {
+                if (j == k) continue;
+                sub.datos[i - 1][colIndex++] = datos[i][j];
+            }
+        }
+        det += datos[0][k] * sub.determinante() * ((k % 2 == 0) ? 1 : -1);
+    }
+    return det;
+}
+
+Matriz Matriz::suma(const Matriz& otra) const {
+    if (filas != otra.filas || columnas != otra.columnas)
+        throw invalid_argument("Dimensiones incompatibles para la suma.");
+
+    Matriz resultado(filas, columnas);
+    for (int i = 0; i < filas; ++i)
+        for (int j = 0; j < columnas; ++j)
+            resultado.datos[i][j] = datos[i][j] + otra.datos[i][j];
+    return resultado;
+}
+
+Matriz Matriz::multiplicacion(const Matriz& otra) const {
+    if (columnas != otra.filas)
+        throw invalid_argument("Dimensiones incompatibles para la multiplicacion.");
+
+    Matriz resultado(filas, otra.columnas);
+    for (int i = 0; i < filas; ++i) {
+        for (int j = 0; j < otra.columnas; ++j) {
+            resultado.datos[i][j] = 0;
+            for (int k = 0; k < columnas; ++k) {
+                resultado.datos[i][j] += datos[i][k] * otra.datos[k][j];
+            }
+        }
+    }
+    return resultado;
+}
+
+bool Matriz::esIgual(const Matriz& otra) const {
+    if (filas != otra.filas || columnas != otra.columnas)
+        return false;
+    for (int i = 0; i < filas; ++i)
+        for (int j = 0; j < columnas; ++j)
+            if (datos[i][j] != otra.datos[i][j])
+                return false;
+    return true;
+}
+
+void Matriz::anadirFila() {
+    double** nuevo = new double*[filas + 1];
+    for (int i = 0; i < filas; ++i)
+        nuevo[i] = datos[i];
+    nuevo[filas] = new double[columnas]{0};
+
+    delete[] datos;
+    datos = nuevo;
+    filas++;
+}
+
+void Matriz::anadirColumna() {
+    for (int i = 0; i < filas; ++i) {
+        double* nuevaFila = new double[columnas + 1];
+        for (int j = 0; j < columnas; ++j)
+            nuevaFila[j] = datos[i][j];
+        nuevaFila[columnas] = 0;
+        delete[] datos[i];
+        datos[i] = nuevaFila;
+    }
+    columnas++;
+}
+
+double Matriz::getValor(int i, int j) const {
+    if (i < 0 || i >= filas || j < 0 || j >= columnas)
+        throw out_of_range("Indice fuera de rango");
+    return datos[i][j];
+}
+
+void Matriz::setValor(int i, int j, double valor) {
+    if (i < 0 || i >= filas || j < 0 || j >= columnas)
+        throw out_of_range("Indice fuera de rango");
+    datos[i][j] = valor;
+}
+
+Matriz MatrizLib::crearMatriz(int filas, int columnas) {
+    return Matriz(filas, columnas);
+}
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#include "Matriz.hpp"
+#include <iostream>
+
+using namespace std;
+using namespace MatrizLib;
+
+int main() {
+    try {
+        // Creación y llenado de matrices
+        Matriz A = crearMatriz(2, 2);
+        cout << "Llenando matriz A:\n";
+        A.llenarMatriz();
+        cout << "\nMatriz A:\n";
+        A.mostrarMatriz();
+
+        Matriz B = crearMatriz(2, 2);
+        cout << "\nLlenando matriz B:\n";
+        B.llenarMatriz();
+        cout << "\nMatriz B:\n";
+        B.mostrarMatriz();
+
+        // Operaciones básicas
+        cout << "\nSuma A + B:\n";
+        Matriz suma = A.suma(B);
+        suma.mostrarMatriz();
+
+        cout << "\nMultiplicacion A * B:\n";
+        Matriz multiplicacion = A.multiplicacion(B);
+        multiplicacion.mostrarMatriz();
+
+        cout << "\nTranspuesta de A:\n";
+        A.transpuesta().mostrarMatriz();
+
+        cout << "\nDeterminante de A: " << A.determinante() << endl;
+
+        // Comparación
+        cout << "\n¿A es igual a B?: " << (A.esIgual(B) ? "Sí" : "No") << endl;
+
+        // Modificación de matrices
+        cout << "\nAnadiendo fila a A...\n";
+        A.anadirFila();
+        cout << "Matriz A modificada:\n";
+        A.mostrarMatriz();
+
+        cout << "\nAnadiendo columna a A...\n";
+        A.anadirColumna();
+        cout << "Matriz A modificada:\n";
+        A.mostrarMatriz();
+
+        // Prueba de manejo de errores
+        cout << "\nIntentando sumar matrices de distinto tamanio:\n";
+        try {
+            Matriz C = crearMatriz(3, 3);
+            A.suma(C).mostrarMatriz();
+        } 
+        catch (const exception& e) {
+            cerr << "Error esperado: " << e.what() << endl;
+        }
+
+        // Prueba de acceso a elementos
+        cout << "\nProbando acceso a elementos:\n";
+        cout << "A[0][0] = " << A.getValor(0, 0) << endl;
+        cout << "Modificando A[0][0] a 5.5\n";
+        A.setValor(0, 0, 5.5);
+        cout << "A[0][0] ahora es: " << A.getValor(0, 0) << endl;
+
+        // Prueba de acceso inválido
+        cout << "\nProbando acceso invalido:\n";
+        try {
+            cout << "Intentando acceder a A[10][10]: ";
+            cout << A.getValor(10, 10) << endl;
+        }
+        catch (const exception& e) {
+            cerr << "Error esperado: " << e.what() << endl;
+        }
+    }
+    catch (const exception& e) {
+        cerr << "Error inesperado: " << e.what() << endl;
+        return 1;
+    }
+
+    return 0;
+}
